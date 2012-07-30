@@ -68,6 +68,8 @@
 -export([compile/2,
          clean/2]).
 
+-export([compress/3]).
+
 %% ===================================================================
 %% Public API
 %% ===================================================================
@@ -100,8 +102,24 @@ clean(Config, _AppFile) ->
     Compressions = option(compressions, Options),
     Targets = [normalize_path(Destination, OutDir)
                || {Destination, _Source} <- Compressions],
-    delete_each(Targets),
-    ok.
+    delete_each(Targets).
+
+compress(Destination, Source, _Options) ->
+    case needs_compress(Source, Destination) of
+        true ->
+            Cmd = lists:flatten(["uglifyjs ", " -o ", Destination, " ", Source]),
+            ShOpts = [{use_stdout, false}, return_on_error],
+            case rebar_utils:sh(Cmd, ShOpts) of
+                {ok, _} ->
+                    io:format("Compressed asset ~s to ~s\n", [Source, Destination]);
+                {error, Reason} ->
+                    rebar_log:log(error, "Compressing asset ~s failed:~n  ~p~n",
+                           [Source, Reason]),
+                    rebar_utils:abort()
+            end;
+        false ->
+            ok
+    end.
 
 %% ===================================================================
 %% Internal functions
@@ -139,21 +157,7 @@ delete_each([First | Rest]) ->
 compress_each([]) ->
     ok;
 compress_each([{Destination, Source} | Rest]) ->
-    case needs_compress(Source, Destination) of
-        true ->
-            Cmd = lists:flatten(["uglifyjs ", " -o ", Destination, " ", Source]),
-            ShOpts = [{use_stdout, false}, return_on_error],
-            case rebar_utils:sh(Cmd, ShOpts) of
-                {ok, _} ->
-                    io:format("Compressed asset ~s to ~s\n", [Source, Destination]);
-                {error, Reason} ->
-                    rebar_log:log(error, "Compressing asset ~s failed:~n  ~p~n",
-                           [Source, Reason]),
-                    rebar_utils:abort()
-            end;
-        false ->
-            ok
-    end,
+    compress(Destination, Source, []),
     compress_each(Rest).
 
 uglifyjs_is_present(Uglifier) -> filelib:is_file(Uglifier).
