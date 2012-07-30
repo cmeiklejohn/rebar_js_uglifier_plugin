@@ -104,7 +104,7 @@ clean(Config, _AppFile) ->
                || {Destination, _Source} <- Compressions],
     delete_each(Targets).
 
-compress(Destination, Source, _Options) ->
+compress(Source, Destination, _Options) ->
     case needs_compress(Source, Destination) of
         true ->
             Cmd = lists:flatten(["uglifyjs ", " -o ", Destination, " ", Source]),
@@ -157,7 +157,7 @@ delete_each([First | Rest]) ->
 compress_each([]) ->
     ok;
 compress_each([{Destination, Source} | Rest]) ->
-    compress(Destination, Source, []),
+    compress(Source, Destination, []),
     compress_each(Rest).
 
 uglifyjs_is_present(Uglifier) -> filelib:is_file(Uglifier).
