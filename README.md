@@ -25,7 +25,7 @@ Then, configure as a plugin in your ```rebar.config```.
 Below is an example configuration with one minification.  In this example ```vendor.js``` is the destination minified file, sourced from ```vendor.js```.  Place the below configuration in your applications ```rebar.config```.
 
 ```erlang
-{js_uglify, [
+{js_uglifier, [
     {doc_root,   "priv/assets/javascripts"},
     {out_dir,    "priv/www/javascripts"},
     {compressions, [
