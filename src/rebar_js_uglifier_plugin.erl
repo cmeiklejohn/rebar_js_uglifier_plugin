@@ -80,21 +80,10 @@ compile(Config, _AppFile) ->
     DocRoot = option(doc_root, Options),
     Compressions = option(compressions, Options),
     Uglifier = option(uglify_path, Options),
-    case uglifyjs_is_present(Uglifier) of
-        true ->
-            Targets = [{normalize_path(Destination, OutDir),
-                        normalize_path(Source, DocRoot)}
-                       || {Destination, Source} <- Compressions],
-            compress_each(Targets);
-        false ->
-            rebar_log:log(error,
-                "~n===============================================~n"
-                " You need to install uglify-js to compress assets~n"
-                " Please run the following: npm install uglify-js~n"
-                "===============================================~n~n",
-                []),
-            rebar_utils:abort()
-    end.
+    Targets = [{normalize_path(Destination, OutDir),
+                normalize_path(Source, DocRoot)}
+               || {Destination, Source} <- Compressions],
+    compress_each(Targets, [{uglify_path, Uglifier}]).
 
 clean(Config, _AppFile) ->
     Options = options(Config),
@@ -104,21 +93,28 @@ clean(Config, _AppFile) ->
                || {Destination, _Source} <- Compressions],
     delete_each(Targets).
 
-compress(Source, Destination, _Options) ->
-    case needs_compress(Source, Destination) of
+compress(Source, Destination, Options) ->
+    Uglifier = option(uglify_path, Options),
+    case uglifyjs_is_present(Uglifier) of
         true ->
-            Cmd = lists:flatten(["uglifyjs ", " -o ", Destination, " ", Source]),
-            ShOpts = [{use_stdout, false}, return_on_error],
-            case rebar_utils:sh(Cmd, ShOpts) of
-                {ok, _} ->
-                    io:format("Compressed asset ~s to ~s\n", [Source, Destination]);
-                {error, Reason} ->
-                    rebar_log:log(error, "Compressing asset ~s failed:~n  ~p~n",
-                           [Source, Reason]),
-                    rebar_utils:abort()
+            case needs_compress(Source, Destination) of
+                true ->
+                    Cmd = lists:flatten(["uglifyjs ", " -o ", Destination, " ", Source]),
+                    ShOpts = [{use_stdout, false}, return_on_error],
+                    case rebar_utils:sh(Cmd, ShOpts) of
+                        {ok, _} ->
+                            io:format("Compressed asset ~s to ~s~n", [Source, Destination]);
+                        {error, Reason} ->
+                            rebar_log:log(error, "Compressing asset ~s failed:~n  ~p~n",
+                                   [Source, Reason]),
+                            rebar_utils:abort()
+                    end;
+                false ->
+                    ok
             end;
         false ->
-            ok
+            rebar_log:log(error,
+                "Bypassing compressing asset ~s failed: uglify-js missing.~n", [Source])
     end.
 
 %% ===================================================================
@@ -154,10 +150,10 @@ delete_each([First | Rest]) ->
     end,
     delete_each(Rest).
 
-compress_each([]) ->
+compress_each([], _Options) ->
     ok;
-compress_each([{Destination, Source} | Rest]) ->
-    compress(Source, Destination, []),
-    compress_each(Rest).
+compress_each([{Destination, Source} | Rest], Options) ->
+    compress(Source, Destination, Options),
+    compress_each(Rest, Options).
 
 uglifyjs_is_present(Uglifier) -> filelib:is_file(Uglifier).
