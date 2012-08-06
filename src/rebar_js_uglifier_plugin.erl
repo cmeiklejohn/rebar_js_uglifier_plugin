@@ -65,6 +65,10 @@
 
 -module(rebar_js_uglifier_plugin).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([compile/2,
          clean/2]).
 
@@ -93,6 +97,8 @@ clean(Config, _AppFile) ->
                || {Destination, _Source} <- Compressions],
     delete_each(Targets).
 
+%% @spec compress(list(), list(), proplist()) -> ok | {error, term()}
+%% @doc Compress source file into destination file using uglifyjs.
 compress(Source, Destination, Options) ->
     Uglifier = option(uglify_path, Options),
     case uglifyjs_is_present(Uglifier) of
@@ -114,7 +120,9 @@ compress(Source, Destination, Options) ->
             end;
         false ->
             rebar_log:log(error,
-                "Bypassing compressing asset ~s failed: uglify-js missing.~n", [Source])
+                "Bypassing compressing asset ~s failed: uglify-js
+                missing.~n", [Source]),
+            {error, missing_uglifier}
     end.
 
 %% ===================================================================
