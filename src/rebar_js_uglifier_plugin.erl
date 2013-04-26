@@ -77,7 +77,7 @@
 %% ===================================================================
 %% Public API
 %% ===================================================================
-
+-spec compile(rebar_config:config(), _) -> ok.
 compile(Config, _AppFile) ->
     Options = options(Config),
     OutDir = option(out_dir, Options),
@@ -89,6 +89,7 @@ compile(Config, _AppFile) ->
                || {Destination, Source} <- Compressions],
     compress_each(Targets, [{uglify_path, Uglifier}]).
 
+-spec clean(rebar_config:config(), _) -> ok.
 clean(Config, _AppFile) ->
     Options = options(Config),
     OutDir = option(out_dir, Options),
@@ -97,8 +98,8 @@ clean(Config, _AppFile) ->
                || {Destination, _Source} <- Compressions],
     delete_each(Targets).
 
-%% @spec compress(list(), list(), proplist()) -> ok | {error, term()}
 %% @doc Compress source file into destination file using uglifyjs.
+-spec compress(string(), string(), [{atom(), string()}]) -> ok.
 compress(Source, Destination, Options) ->
     Uglifier = option(uglify_path, Options),
     case uglifyjs_is_present(Uglifier) of
